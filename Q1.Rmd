@@ -1,0 +1,210 @@
+---
+title: "Question1"
+author: "Gabriel James"
+date: "8/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+data = read.csv("C:\\Users\\gabej\\Downloads\\greenbuildings.csv.txt")
+df = data.frame(data)
+
+#convert to categorical
+df$green_rating = as.factor(df$green_rating)
+df$cluster = as.factor(df$cluster)
+df$renovated = as.factor(df$renovated)
+df$class_a = as.factor(df$class_a)
+df$class_b = as.factor(df$class_b)
+df$LEED = as.factor(df$LEED)
+df$Energystar = as.factor(df$Energystar)
+df$net = as.factor(df$net)
+df$amenities = as.factor(df$amenities)
+
+df$class = ifelse(df$class_a=="1", "Class A", ifelse(df$class_b=="1", "Class B", "Class C"))
+
+df$class = as.factor(df$class)
+
+summary(df)
+```
+
+
+
+
+Let's take a look at rents by green_rating.
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating) %>%
+  summarize(Median_Rent = median(Rent, na.rm=T))
+
+ggplot(data = dh, aes(green_rating, Median_Rent)) + 
+  geom_bar(position="dodge" , stat='identity')
+```
+
+Awesome.  As we had assumed, green rated buildings have higher rents.
+
+
+Let's look at how green rated and non-green rated buildings are classified by quality:
+
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, class) %>%
+  summarize(n = n()) %>%
+  mutate(frequency = n/sum(n))
+
+
+dh
+```
+Most green rated buildings are Class A.  How do rents compare when we control for class?
+
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, class) %>%
+  summarize(Median_Rent = median(Rent, na.rm=T))
+
+ggplot(data = dh, aes(green_rating, Median_Rent)) + 
+  geom_bar(aes(fill=class), position="dodge" , stat='identity')
+```
+
+For Class A and B Buildings, the rent is lower for green buildings and substantially higher for Class C Buildings!
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, class) %>%
+  summarize(AVG_Rent = mean(Rent, na.rm=T))
+dh
+```
+
+
+
+Let's look at renovations now.  First, let's see how old buildings typically are.
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, class) %>%
+  summarize(Median_Age = median(age, na.rm=T))
+
+ggplot(data = dh, aes(green_rating, Median_Age)) + 
+  geom_bar(aes(fill=class), position="dodge" , stat='identity')
+```
+
+This plot affirms our intuition that green rated buildings are probably newer.
+
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating) %>%
+  summarize(Percent_Renovated = 100*sum(renovated==1)/n())
+
+ggplot(data = dh) + 
+  geom_bar(mapping = aes(x=green_rating, y=Percent_Renovated), stat='identity')
+```
+
+A lower percent of green rated buildings have had renovations.  But wait!  Green rated buildings are typically younger than non-green.  
+Let's control for age (Note: This is an approximation.  Renovation is a binary variable, not a count.  It's likely non-green rated under-represents actual renovation count).
+```{r echo=FALSE}
+dh <- df %>%
+  mutate(reno = ifelse(renovated==1, 1, 0)) %>%
+  mutate(Renos_per_Year = reno/age) %>%
+  group_by(green_rating, class) %>%
+  summarize(AVG_Renos_per_Year = mean(reno/age, na.rm=T))
+
+
+ggplot(data = dh, aes(green_rating, AVG_Renos_per_Year)) + 
+  geom_bar(aes(fill=class), position="dodge" , stat='identity')
+```
+```{r echo=FALSE}
+dh
+```
+So Class B and C green rated buildings require on average more renovations every year than their non-green rated counterparts.
+
+
+
+```{r echo=FALSE}
+ggplot(data = dh, aes(green_rating, AVG_Renos_per_Year)) + 
+  geom_bar(position="dodge" , stat='identity')
+```
+
+When controlling for age, green rated buildings are renovated more often than non green rated buildings.
+
+
+Now let's take a look at occupancy rates.
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, class) %>%
+  summarize(AVG_Leasing_Rate = mean(leasing_rate, na.rm=T))
+
+
+ggplot(data = dh, aes(green_rating, AVG_Leasing_Rate)) + 
+  geom_bar(aes(fill=class), position="dodge" , stat='identity')
+
+dh <- df %>%
+  group_by(green_rating) %>%
+  summarize(AVG_Leasing_Rate = mean(leasing_rate, na.rm=T))
+
+ggplot(data = dh, aes(green_rating, AVG_Leasing_Rate)) + 
+  geom_bar(position="dodge" , stat='identity')
+```
+Green rated buildings have much higher occupancy, even though they have higher rent per square foot.  Let's break this down by amenities to be sure there isn't anything else going on.
+```{r echo=FALSE}
+dh <- df %>%
+  group_by(green_rating, amenities) %>%
+  summarize(AVG_Leasing_Rate = mean(leasing_rate, na.rm=T))
+
+
+ggplot(data = dh, aes(green_rating, AVG_Leasing_Rate)) + 
+  geom_bar(aes(fill=amenities), position="dodge" , stat='identity')
+
+```
+It doesn't look like the presence of amenities changes the behavior of occupancy rates.
+
+
+
+Let's look at utilities as another possible explanation.
+First, let's look at rent that includes utilities.
+```{r echo=FALSE}
+dh <- df %>%
+  filter(net==1) %>%
+  group_by(green_rating, class) %>%
+  summarize(AVG_Rent = mean(Rent, na.rm=T))
+
+
+ggplot(data = dh, aes(green_rating, AVG_Rent)) + 
+  geom_bar(aes(fill=class), position="dodge" , stat='identity')
+```
+```{r echo=FALSE}
+dh
+```
+
+When utilities are included in rent, green buildings are actually (slightly) cheaper for leasees, but this doesn't explain the differences in occupancy rates.
+
+
+
+
+In summary, class A and B green rated buildings are about as pricey as their non-green counterparts, when controlling for utilities.  Additionally, based on an approximation, Class A buildings that are green require fewer renovations than non-green Class A buildings.  Last, green rated buildings have higher occupancy rates than non-green buildings.
+
+Ultimately, I would recommend further investigation of renovations of green and non-green buildings.  Specifically, we need to know how expensive green renovations are compared to non-green and how frequently green and non-green buildings require renovations.  That aside, I would recommend moving forward with "going green."  Green buildings have a market appeal, bring good PR, and help our customers save money.  Perhaps most importantly, green buildings tend to have much higher occupancy rates.  High occupancy rates will help us market ourselves to investors and allow us to expand more lucratively than we otherwise could.  With a larger operation and economies of scale, we will be able to achieve better margins than we ever could now.
