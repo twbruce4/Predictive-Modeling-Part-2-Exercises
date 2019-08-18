@@ -17,12 +17,22 @@ readerPlain = function(fname){
 ## apply to all of Reuters_train Cowell's articles
 ## (probably not THE Reuters_train Cowell: https://twitter.com/Reuters_traincowell)
 ## "globbing" = expanding wild cards in filename paths
-file_list = Sys.glob('../data/ReutersC50/C50train/*/*.txt')
+Art_dirs = Sys.glob('C:/Users/chris/OneDrive/Documents/GitHub/STA380/data/ReutersC50/C50train/*')
+
+
+#author_dirs = Sys.glob('C:/Users/Dhwani/Documents/Coursework/Summer - Predictive Analytics/STA380/STA380/data/ReutersC50/C50train/*')
+
+file_list = NULL
+labels = NULL
+
+for(author in Art_dirs) {
+  author_name = substring(author, first=73)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list = append(file_list, files_to_add)
+  labels = append(labels, rep(author_name, length(files_to_add)))
+}
+
 Reuters_train = lapply(file_list, readerPlain) 
-
-# The file names are ugly...
-file_list
-
 # Clean up the file names
 # This uses the piping operator from magrittr
 # See https://cran.r-project.org/web/packages/magrittr/vignettes/magrittr.html
@@ -32,9 +42,9 @@ mynames = file_list %>%
   { lapply(., paste0, collapse = '') } %>%
   unlist
 
-# Rename the articles
-mynames
 names(Reuters_train) = mynames
+names(Reuters_train) = sub('.txt', '', names(Reuters_train))
+
 
 ## once you have documents in a vector, you 
 ## create a text mining 'corpus' with: 
@@ -84,95 +94,103 @@ tfidf_Reuters_train = weightTfIdf(DTM_Reuters_train)
 # Compare documents
 ####
 
-inspect(tfidf_Reuters_train[1,])
-inspect(tfidf_Reuters_train[2,])
-inspect(tfidf_Reuters_train[3,])
-
-# could go back to the raw corpus
-content(Reuters_train[[1]])
-content(Reuters_train[[2]])
-content(Reuters_train[[3]])
-
 # cosine similarity
 i = 1
 j = 3
 sum(tfidf_Reuters_train[i,] * (tfidf_Reuters_train[j,]))/(sqrt(sum(tfidf_Reuters_train[i,]^2)) * sqrt(sum(tfidf_Reuters_train[j,]^2)))
 
 
-#####
-# Cluster documents using cosine distance
-# cosine distance = 1 - cosine similarity
-#####
-
-# define the cosine distance
-cosine_dist_mat = proxy::dist(as.matrix(tfidf_Reuters_train), method='cosine')
-tree_Reuters_train = hclust(cosine_dist_mat)
-plot(tree_Reuters_train)
-clust5 = cutree(tree_Reuters_train, k=5)
-
-# inspect the clusters
-which(clust5 == 1)
-content(Reuters_train[[1]])
-content(Reuters_train[[4]])
-content(Reuters_train[[5]])
-
-
-
-####
-# Dimensionality reduction
-####
-
 # Now PCA on term frequencies
-X = as.matrix(tfidf_Reuters_train)
-summary(colSums(X))
-scrub_cols = which(colSums(X) == 0)
-X = X[,-scrub_cols]
+X_train = as.matrix(tfidf_Reuters_train)
+summary(colSums(X_train))
+scrub_cols = which(colSums(X_train) == 0)
+X_train = X_train[,-scrub_cols]
 
-pca_Reuters_train = prcomp(X, scale=TRUE)
-plot(pca_Reuters_train) 
+pca_Reuters_train = prcomp(DTM_Reuters_train, scale=TRUE)
 
-# Look at the loadings
-pca_Reuters_train$rotation[order(abs(pca_Reuters_train$rotation[,1]),decreasing=TRUE),1][1:25]
-pca_Reuters_train$rotation[order(abs(pca_Reuters_train$rotation[,2]),decreasing=TRUE),2][1:25]
+X_train_pca = pca_Reuters_train$x[,1:1500]
 
+# If we want to use PCA compressed matricies, we would use pca_Reuters_train$x[,1:1000]
 
-## Look at the first two PCs..
-# We've now turned each document into a single pair of numbers -- massive dimensionality reduction
-pca_Reuters_train$x[,1:2]
+smooth_count = 1/nrow(X_train)
+w = rowsum(X_train + smooth_count, labels)
+w = w/sum(w)
+w = log(w)
 
-plot(pca_Reuters_train$x[,1:2], xlab="PCA 1 direction", ylab="PCA 2 direction", bty="n",
-     type='n')
-text(pca_Reuters_train$x[,1:2], labels = 1:length(Reuters_train), cex=0.7)
+smooth_count_pca = 1/nrow(X_train_pca)
+w_pca = rowsum(X_train_pca + smooth_count, labels)
+w_pca = w_pca/sum(w_pca)
+w_pca = log(w_pca)
 
-# Both about "Scottish Amicable"
-content(Reuters_train[[46]])
-content(Reuters_train[[48]])
-
-# Both about genetic testing
-content(Reuters_train[[25]])
-content(Reuters_train[[26]])
-
-# Both about Ladbroke's merger
-content(Reuters_train[[10]])
-content(Reuters_train[[11]])
-
-# Conclusion: even just these two-number summaries still preserve a lot of information
+##################################################################################################
+# Get Test Data
+Art_dirs = Sys.glob('C:/Users/chris/OneDrive/Documents/GitHub/STA380/data/ReutersC50/C50test/*')
 
 
-# Now look at the word view
-# 5-dimensional word vectors
-word_vectors = pca_Reuters_train$rotation[,1:5]
+#author_dirs = Sys.glob('C:/Users/Dhwani/Documents/Coursework/Summer - Predictive Analytics/STA380/STA380/data/ReutersC50/C50train/*')
 
-word_vectors[984,]
+file_list = NULL
+test_labels = NULL
+author_names = NULL
 
-d_mat = dist(t(word_vectors))
+for(author in Art_dirs) {
+  author_name = substring(author, first=72)
+  author_names = append(author_names, author_name)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list = append(file_list, files_to_add)
+  test_labels = append(test_labels, rep(author_name, length(files_to_add)))
+}
+
+Reuters_test = lapply(file_list, readerPlain) 
+
+mynames = file_list %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+names(Reuters_test) = mynames
+names(Reuters_test) = sub('.txt', '', names(Reuters_test))
 
 
+## once you have documents in a vector, you 
+## create a text mining 'corpus' with: 
+documents_raw_test = Corpus(VectorSource(Reuters_test))
+
+## Some pre-processing/tokenization steps.
+## tm_map just maps some function to every document in the corpus
+my_documents_test = documents_raw_test
+my_documents_test = tm_map(my_documents_test, content_transformer(tolower)) # make everything lowercase
+my_documents_test = tm_map(my_documents_test, content_transformer(removeNumbers)) # remove numbers
+my_documents_test = tm_map(my_documents_test, content_transformer(removePunctuation)) # remove punctuation
+my_documents_test = tm_map(my_documents_test, content_transformer(stripWhitespace)) ## remove excess white-space
+
+my_documents_test = tm_map(my_documents_test, content_transformer(removeWords), stopwords("en"))
 
 
+## create a doc-term-matrix
+DTM_Reuters_test = DocumentTermMatrix(my_documents_test, control = list(dictionary=Terms(DTM_Reuters_train)))
+DTM_Reuters_test_pca = DocumentTermMatrix(my_documents_test, control = list(dictionary=Terms(X_train_pca)))
+
+X_test = as.matrix(DTM_Reuters_test)
+X_test_pca = as.matrix(DTM_Reuters_test_pca)
+##################################################################################################################
+
+library(randomForest)
+library("caret")
+
+X <- as.matrix(DTM_Reuters_train)
+
+Aut_RF = randomForest(x=X, y=as.factor(labels),ntree=100)
+
+Aut_pred =predict(Aut_RF,newdata=X_test)
+
+Aut_cm = confusionMatrix(table(Aut_pred,test_labels))
+Aut_cm$overall
 
 
-
+# This got 62% accuracy, when using the X_train matrix that had the tfidf matrix
+# got a 55% accuracy.
 
 
 
