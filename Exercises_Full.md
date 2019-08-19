@@ -298,6 +298,79 @@ segment. In the table, we see that outdoor/travel customer comprise only
 that we’ve identified are the beauty/fashion group and the Fit Foodie
 group.
 
+# Author Attribution
+
+Before we began pre-processing our data, we had to create an ‘author’
+category. This is because the data is read in without a label category
+already created and one is needed for our classification problem at
+hand. Note that the pre-processing we detail are the steps taken for
+both our training AND test set.
+
+We create two empty lists: an empty list (henceforth file list) to
+contain each file of the training/test documents, and another empty list
+that will contain the author’s name and their number of writings
+(henceforth label list). After this, we can now begin to extract the
+author and file names.
+
+We iterate through every folder name within the corpus and extracts the
+folder name itself (because each folder represents one author and their
+writings). The loop continues and extracts the file name of each writing
+within an author folder before appending the file to our file list. At
+the end of each loop, we append the author name and their number of
+files to our label list.
+
+Now that we have our file list, we can read in the files with a
+readPlain function to read in every file name in English and also assign
+a unique ID for each file. With this function we assign it to a newly
+initialized list whose elements are the file names of every document in
+the training/test directory. However, we check the names of this list
+and see that the file names still need to be scrubbed as each file ends
+with a ‘.txt’ extension.
+
+With our proper file names for every document we create corpuses out of
+them. We initialize the corpus. Once the corpus is initialized, we need
+to run some pre-processing on each document. We make everything
+lowercase and remove any numbers, punctuation, or excess white space.
+Finally, we remove any words under the ‘en’ stopwords.
+
+The document-term matrix is now initialized from our cleaned up corpus.
+In our training DTM, we will remove any sparse terms in the matrix and
+set our criteria for terms that did not appear in 99% of our documents.
+In our test DTM, we ensure that all words of the training DTM are
+included by specifying it as a control within the test DTM
+initialization. The DTMs use term frequency as their weighting
+criterion. With our DTMs constructed we can now begin modeling our data
+and analysis of the model.
+
+    ##                   test_labels
+    ##                    /AaronPressman /AlanCrosby /AlexanderSmith
+    ##   /AaronPressman               47           0               1
+    ##   /AlanCrosby                   0          32               0
+    ##   /AlexanderSmith               0           0              13
+    ##   /BenjaminKangLim              0           0               0
+    ##   /BernardHickey                0           0               0
+    ##                   test_labels
+    ##                    /BenjaminKangLim /BernardHickey
+    ##   /AaronPressman                  0              0
+    ##   /AlanCrosby                     0              0
+    ##   /AlexanderSmith                 0              0
+    ##   /BenjaminKangLim               19              0
+    ##   /BernardHickey                  0             34
+
+    ##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+    ##      0.6484000      0.6412245      0.6293182      0.6671335      0.0200000 
+    ## AccuracyPValue  McnemarPValue 
+    ##      0.0000000            NaN
+
+We attempted random forest, PCA, and Naive Bayes fits, and our best
+model was a random forest fit with 500 trees. The table shown above
+shows the first 5 rows and columns of the confusion matrix, and the fit
+was evidently very accurate on some authors (such as Aaron Pressman) and
+not so accurate on others (such as Alexander Smith). When using the
+original training matrix (Without the tf\_idf component), we got an
+accuracy of 65% (accuracy was about 10% lower with the tf\_idf weighting
+included).
+
 # Association rule mining
 
 ![](GrocNetwork.png)
@@ -306,9 +379,9 @@ We reduced our list of association rules to 39. We chose a threshold of
 confidence \> 0.3 and lift \> 3. This was done to create a concise list
 of rules that had high confidence and items that customers were 3x more
 likely to purchase. Some of these rulese include customers who buy
-tropical fruit and whipped/sour cream will mostlikey also buy yogurt
+tropical fruit and whipped/sour cream will most likely also buy yogurt
 (45% confident). This makes sense because the customer is likely
-shopping for breakfast items or desert and these all would go together.
+shopping for breakfast items or dessert and these all would go together.
 Another rule to highlight is customers who buy chicken and whole milk
 will likely buy root vegetables (34% confident). This could be basic
 essentials for any household or customers making chicken soup.
