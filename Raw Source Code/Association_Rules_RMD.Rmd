@@ -1,0 +1,65 @@
+---
+title: "Association_Rules_RMD"
+author: "Chris Fitzgerald"
+date: "8/17/2019"
+output: html_document
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
+library(tidyverse)
+library(arules)  # has a big ecosystem of packages built around it
+library(arulesViz)
+
+df <- read.transactions("~/GitHub/STA380/data/groceries.txt", sep = ",")
+#df$sizes
+
+# Now run the 'apriori' algorithm
+# Look at rules with support > .005 & confidence >.1 & length (# artists) <= 5
+basketrules = apriori(df, 
+                     parameter=list(support=.005, confidence=.1, maxlen=5))
+
+# Look at the output... so many rules!
+#inspect(basketrules)
+
+# plot all the rules in (support, confidence) space
+# notice that high lift rules tend to have low support
+#plot(basketrules)
+
+# "two key" plot: coloring is by size (order) of item set
+#plot(basketrules, method='two-key plot')
+
+# can now look at subsets driven by the plot
+#inspect(subset(basketrules, support > 0.035))
+inspect(subset(basketrules, confidence > 0.3 & lift > 3))
+#inspect(subset(basketrules, confidence > 0.25 & lift > 2.5 & support > .009)) #Small subset
+
+
+
+# graph-based visualization
+sub1 = subset(basketrules, subset=confidence > 0.3 & lift > 3)
+#sub1 = subset(basketrules, subset=confidence > 0.25 & lift > 2.5 & support > .009) #Small Subset
+#summary(sub1)
+#plot(sub1, method='graph')
+#?plot.rules
+
+
+
+#plot(head(sub1, 100, by='lift'), method='graph')
+
+# export
+#saveAsGraph(head(sub1, n = 1000, by = "lift"), file = "basketrules.graphml")
+
+```
+
+
+# Association rule mining
+
+
+![](C:/Users/chris/OneDrive/Documents/GitHub/STA380/GrocNetwork.png)
+
+
+
+We reduced our list of association rules to 39. We chose a threshold of confidence > 0.3 and lift > 3. This was done to create a concise list of rules that had high confidence and items that customers were 3x more likely to purchase. Some of these rulese include customers who buy tropical fruit and whipped/sour cream will mostlikey also buy yogurt (45% confident). This makes sense because the customer is likely shopping for breakfast items or desert and these all would go together. Another rule to highlight is customers who buy chicken and whole milk will likely buy root vegetables (34% confident). This could be basic essentials for any household or customers making chicken soup.  
+
+
+

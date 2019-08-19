@@ -1,0 +1,90 @@
+---
+title: "USL2"
+author: "Gabriel James"
+date: "8/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r echo=False}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+df = read.csv("C:\\Users\\gabej\\Downloads\\ABIA.csv")
+
+df$Month = as.factor(df$Month)
+df$DayofMonth = as.factor(df$DayofMonth)
+df$DayofWeek = as.factor(df$DayOfWeek)
+df$UniqueCarrier = as.factor(df$UniqueCarrier)
+df$FlightNum = as.factor(df$FlightNum)
+df$TailNum = as.factor(df$TailNum)
+df$Origin = as.factor(df$Origin)
+df$Dest = as.factor(df$Dest)
+df$CancellationCode = as.factor(df$CancellationCode)
+df$Diverted = as.factor(df$Diverted)
+
+
+
+```
+
+```{r echo=False}
+dh <- df %>%
+  mutate(C = ifelse(Cancelled==1, 1,0)) %>%
+  group_by(Month, CancellationCode) %>%
+  summarize(Count = n()) %>%
+  spread(CancellationCode, Count) %>%
+  mutate(Carrier_Cancel = A/V1) %>%
+  mutate(Weather_Cancel = B/V1) %>%
+  mutate(Aviation_System_Cancel = C/V1) %>%
+  mutate(Percent_Not_Cancelled = (V1-A-B-C)/V1) %>%
+  rename(Count=V1) %>%
+  select(-A, -B, -C) %>%
+  mutate(Month2 = as.numeric(as.character(Month)))
+```
+
+```{r echo=False}
+ggplot(data = dh) + 
+  geom_bar(mapping = aes(x=Month, y=Count), position="dodge", stat="identity", fill = 'grey30')  +
+  geom_line(mapping = aes(x=Month2, y=Carrier_Cancel*max(dh$Count)*30, colour='goldenrod1'), stat="identity", size=2) + 
+  geom_line(mapping = aes(x=Month2, y=Weather_Cancel*max(dh$Count)*30, colour='darkorchid1'), stat="identity", size=2) + 
+  geom_line(mapping = aes(x=Month2, y=Aviation_System_Cancel*max(dh$Count)*30, colour='steelblue3'), stat="identity", size=2) +
+  scale_y_continuous(sec.axis = sec_axis(~./max(dh$Count)/30*100, name="Percent Cancelled")) +
+  scale_color_discrete(name = "Cancellation Reason", labels = c("Carrier", "Weather", "National Aviation System"))+
+  labs(title="Flights from Austin, 2008", y="Number of Flights",x = "Month") + 
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 15, vjust=-.2)) +
+  theme(axis.title.y = element_text(size = 15, vjust=3)) +
+  theme(axis.title.y.right = element_text(angle = 90, hjust=0.5)) +
+  theme(title = element_text(size = 20)) + 
+  theme(legend.title=element_text(size=12))
+  
+  #scale_colour_manual(name = 'Cancellation Type', guide = 'Legend',
+  #values = c('goldenrod1' = 'goldenrod1', 'darkorchid1' = 'darkorchid1', 'steelblue3' = 'steelblue3'),
+  #labels = c('Carrier', 'Weather', 'National Aviation System'))
+  #cols <- c("LINE1"="#f04546","LINE2"="#3591d1","BAR"="#62c76b")
+
+```
